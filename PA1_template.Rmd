@@ -1,0 +1,139 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+```{r setup, include=TRUE, echo = TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(DT)
+```
+
+## Loading and preprocessing the data
+
+```{r}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",
+              destfile = "./Data/activity.zip")
+unzip("./Data/activity.zip", exdir = "./Data")
+data <- read.csv("./Data/activity.csv") %>%
+    mutate(date = as.Date(date))
+```
+##
+
+## What is mean total number of steps taken per day?
+
+### Steps Taken by Day
+
+```{r}
+# Calculate steps taken by day
+summary <- data %>%
+    group_by(date) %>%
+    summarise(totalSteps = sum(steps))
+datatable(summary)
+```
+
+### Distribution of Steps Taken by Day
+
+```{r}
+ggplot(data = summary, aes(totalSteps)) +
+    geom_histogram()
+```
+
+The mean of steps in a day is `r mean(summary$totalSteps, na.rm = TRUE)`.
+The median is `r median(summary$totalSteps, na.rm = TRUE)`.
+
+##
+
+## What is the average daily activity pattern?
+
+### Average Daily Activity per interval
+
+```{r}
+summary <- data %>%
+    group_by(interval) %>%
+    summarise(stepsMean = mean(steps, na.rm = TRUE))
+datatable(summary)
+```
+
+### Daily Activity Distribution
+
+```{r}
+ggplot(data = summary) +
+    geom_line(aes(interval, stepsMean))
+```
+
+The interval that contains the maximum number of steps mean is
+`r summary %>% with(interval[stepsMean == max(stepsMean)])`.
+
+##
+
+## Imputing missing values
+
+### Missing Values Countting
+
+There are `sum(is.na(summary$steps))` missing values n the set.
+
+### Filling Missing Values
+
+The missing values are going to be replaced by the mean of its interval across the days.
+
+```{r}
+data2 = data %>% 
+  merge(summary) %>%
+  (function(X) {
+    nas = is.na(X$steps)
+    X$steps[nas] = round(X$stepsMean[nas], 2)
+    return(X)
+  }) %>%
+  select(3:1)
+datatable(data2)
+```
+
+### New Distribution of Steps Taken by Day
+
+```{r}
+# Calculate steps taken by day
+summary2 <- data2 %>%
+    group_by(date) %>%
+    summarise(totalSteps = sum(steps))
+datatable(summary2)
+```
+
+### Distribution of Steps Taken by Day
+
+```{r}
+ggplot(data = summary2, aes(totalSteps)) +
+    geom_histogram()
+```
+
+The mean of steps in a day is `r mean(summary2$totalSteps, na.rm = TRUE)`.
+The median is `r median(summary2$totalSteps, na.rm = TRUE)`.
+
+##
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+data2 %>% 
+  mutate(day = factor(weekdays(data2$date) %in% c("sábado", "domingo"), 
+                      labels = c("weekday", "weekend"))) %>%
+  group_by(interval, day) %>%
+  summarise(stepsMean = mean(steps, na.rm = T)) %>%
+  ggplot(aes(interval, stepsMean)) +
+  geom_line() +
+  facet_wrap(vars(day), ncol = 1)
+```
+
+
+
+
+
+
+
+
+
+
+
